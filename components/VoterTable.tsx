@@ -49,8 +49,8 @@ const VoterTable: React.FC<VoterTableProps> = ({ voters, onDelete }) => {
           <tbody className="divide-y divide-slate-100">
             {filteredVoters.map((voter, index) => (
               <tr key={voter.id} className="hover:bg-slate-50 transition-colors">
-                <td className="px-4 py-4 text-sm text-center text-slate-500 font-mono">
-                  {(index + 1).toString().padStart(3, '০')}
+                <td className="px-4 py-4 text-sm text-center text-slate-500 font-mono font-bold">
+                  {voter.slNo || (index + 1).toString().padStart(3, '০')}
                 </td>
                 <td className="px-6 py-4">
                   <div className="font-medium text-slate-900">{voter.name}</div>

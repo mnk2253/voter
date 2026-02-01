@@ -3,6 +3,7 @@ export type Gender = 'পুরুষ' | 'মহিলা' | 'অন্যান
 
 export interface Voter {
   id: string;
+  slNo?: string; // Serial Number from PDF
   name: string;
   fatherName: string;
   motherName: string;

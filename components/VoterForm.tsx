@@ -9,6 +9,7 @@ interface VoterFormProps {
 
 const VoterForm: React.FC<VoterFormProps> = ({ onAdd, onCancel }) => {
   const [formData, setFormData] = useState({
+    slNo: '',
     name: '',
     fatherName: '',
     motherName: '',
@@ -41,6 +42,15 @@ const VoterForm: React.FC<VoterFormProps> = ({ onAdd, onCancel }) => {
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-1">
+            <label className="text-sm font-medium text-slate-700">Sl নং (ঐচ্ছিক)</label>
+            <input
+              placeholder="পিডিএফ এর ক্রমিক নং"
+              className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none"
+              value={formData.slNo}
+              onChange={e => setFormData({...formData, slNo: e.target.value})}
+            />
+          </div>
           <div className="space-y-1">
             <label className="text-sm font-medium text-slate-700">নাম</label>
             <input
