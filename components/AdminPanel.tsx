@@ -16,50 +16,34 @@ import {
   Database,
   Loader2,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  Save,
+  Phone,
+  Lock,
+  Briefcase,
+  User as UserIcon
 } from 'lucide-react';
 
 // Comprehensive map for high-performance replacement of PDF artifacts
 const EC_CHAR_MAP: Record<string, string> = {
   'ĺ': 'ব্দ', 'Ĩ': 'সা', 'ę': 'দ্র', 'Ľ': 'ব্র', 'Ō': 'ছা', 'Ž': 'জ', 'ñ': 'ন', 'ĥ': 'ন্ম', 'ń': 'ম্ব', 'İ': 'ি', 'Ï': 'ো',
-  // Fix: Removed duplicate key 'ý' on line 25
   'Ř': 'শ্র', 'ý': 'গঞ্জ', 'ঁ': 'া'
 };
 
 const cleanSmallString = (text: string): string => {
   if (!text) return "";
-  
-  // 1. Initial character mapping replacement
   let result = text.replace(/[ĺĨęĽŌŽñĥńİÏŘýঁ]/g, match => EC_CHAR_MAP[match] || match);
-  
-  // 2. Complex replacements for broken words and vowel signs
   const replacements: [RegExp, string][] = [
-    [/োমাছাঃ/g, 'মোছাঃ'], 
-    [/োমাঃ/g, 'মোঃ'], 
-    [/োভাটার\s*নং/g, 'ভোটার নং'],
-    [/োভাটার/g, 'ভোটার'], 
-    [/িপতা/g, 'পিতা'], 
-    [/ামাতা/g, 'মাতা'],
-    [/োপশা/g, 'পেশা'],
-    [/োপেশা/g, 'পেশা'],
-    [/জ[ĥন্ম]\s*তািরখ/g, 'জন্ম তারিখ'],
-    [/জন্ম\s*তািরখ/g, 'জন্ম তারিখ'],
-    [/ে\s*া/g, 'ো'], 
-    [/ে\s*ৗ/g, 'ৌ'], 
-    [/ি\s+/g, 'ি'],
-    [/ু\s+/g, 'ু'], 
-    [/র্\s+/g, 'র্'],
-    [/([ক-হ])\s*ি/g, '$1ি'],
-    [/ি([ক-হ])/g, '$1ি'],
-    [/ঃ/g, ':'], 
-    [/।/g, ''],
-    [/(\s*\:\s*)/g, ': ']
+    [/োমাছাঃ/g, 'মোছাঃ'], [/োমাঃ/g, 'মোঃ'], [/োভাটার\s*নং/g, 'ভোটার নং'],
+    [/োভাটার/g, 'ভোটার'], [/িপতা/g, 'পিতা'], [/ামাতা/g, 'মাতা'],
+    [/োপশা/g, 'পেশা'], [/োপেশা/g, 'পেশা'], [/জ[ĥন্ম]\s*তািরখ/g, 'জন্ম তারিখ'],
+    [/জন্ম\s*তািরখ/g, 'জন্ম তারিখ'], [/ে\s*া/g, 'ো'], [/ে\s*ৗ/g, 'ৌ'], [/ি\s+/g, 'ি'],
+    [/ু\s+/g, 'ু'], [/র্\s+/g, 'র্'], [/([ক-হ])\s*ি/g, '$1ি'],
+    [/ি([ক-হ])/g, '$1ি'], [/ঃ/g, ':'], [/।/g, ''], [/(\s*\:\s*)/g, ': ']
   ];
-
   for (const [pattern, rep] of replacements) {
     result = result.replace(pattern, rep);
   }
-
   return result.replace(/\s+/g, ' ').trim();
 };
 
@@ -76,11 +60,18 @@ export const AdminPanel: React.FC = () => {
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [showBulkImport, setShowBulkImport] = useState(false);
+  const [showAddMember, setShowAddMember] = useState(false);
   const [bulkText, setBulkText] = useState('');
   const [isImporting, setIsImporting] = useState(false);
   const [isDetecting, setIsDetecting] = useState(false);
   const [detectedVoters, setDetectedVoters] = useState<any[]>([]);
   const [processStatus, setProcessStatus] = useState('');
+
+  // Manual Member Add State
+  const [newMember, setNewMember] = useState({
+    name: '', phone: '', password: '', fatherName: '', occupation: ''
+  });
+  const [isSavingMember, setIsSavingMember] = useState(false);
 
   useEffect(() => {
     const unsubUsers = onSnapshot(query(collection(db, 'users'), orderBy('createdAt', 'desc'), limit(100)), (snapshot) => {
@@ -89,6 +80,30 @@ export const AdminPanel: React.FC = () => {
     });
     return () => unsubUsers();
   }, []);
+
+  const handleManualAdd = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newMember.name || !newMember.phone || !newMember.password) return;
+    
+    setIsSavingMember(true);
+    try {
+      await addDoc(collection(db, 'users'), {
+        ...newMember,
+        role: 'user',
+        status: 'active',
+        photoUrl: 'https://cdn-icons-png.flaticon.com/512/149/149071.png',
+        createdAt: Date.now(),
+        isOnline: false
+      });
+      alert('সদস্য সফলভাবে যুক্ত হয়েছে!');
+      setShowAddMember(false);
+      setNewMember({ name: '', phone: '', password: '', fatherName: '', occupation: '' });
+    } catch (err) {
+      alert('সেভ করতে সমস্যা হয়েছে।');
+    } finally {
+      setIsSavingMember(false);
+    }
+  };
 
   const handleDetectVoters = async () => {
     if (!bulkText.trim() || isDetecting) return;
@@ -102,47 +117,37 @@ export const AdminPanel: React.FC = () => {
         const lines = bulkText.split('\n');
         const results: any[] = [];
         
-        // Strategy A: Row-based Tabular Data (Standard table copy)
-        // Format: [SL] [VoterID] [Name] [Father] [Mother] [BirthDate]
-        const rowPattern = /^([০-৯0-9]+)\s+([০-৯0-9]{10,17}|—)\s+(.*?)\s+(.*?)\s+(.*?)\s+([০-৯0-9\/\-]+|—)$/;
-        
-        // Strategy B: Label-based block data (PDF Detail View)
-        const blockPattern = /([০-৯0-9]+)?[\.\s]*নাম\s*[:\s]*(.*?)\s*ভোটার নং\s*[:\s]*([০-৯0-9]+)\s*পিতা\s*[:\s]*(.*?)\s*মাতা\s*[:\s]*(.*?)\s*পেশা\s*[:\s]*(.*?)\s*[,।]?\s*জন্ম তারিখ\s*[:\s]*([০-৯0-9\/\-]+)/gs;
-
-        // Try Strategy A first (Line by line)
-        lines.forEach((line, idx) => {
+        lines.forEach((line) => {
           const cleanLine = line.trim();
           if (!cleanLine || cleanLine.includes('ক্রমিক নং')) return;
           
-          const match = cleanLine.match(rowPattern);
-          if (match) {
-            if (match[2] === '—' || match[3].includes('মাইগ্রেট')) return; // Skip invalid entries
-            results.push({
-              slNo: bnToEn(match[1]),
-              voterNumber: bnToEn(match[2]),
-              name: cleanSmallString(match[3]),
-              fatherName: cleanSmallString(match[4]),
-              motherName: cleanSmallString(match[5]),
-              birthDate: bnToEn(match[6]),
-              occupation: 'ভোটার'
-            });
+          // Improved Strategy A: Try to split by Tab or multiple spaces (>=2 spaces)
+          const columns = cleanLine.split(/\t|\s{2,}/).map(c => c.trim()).filter(c => c !== "");
+          
+          if (columns.length >= 5) {
+            // Columns expected: [SL] [VoterID] [Name] [Father] [Mother] [BirthDate]
+            // We use columns[1] as Voter ID, columns[2] as Name, etc.
+            const voterIdCandidate = bnToEn(columns[1]);
+            if (voterIdCandidate === '—' || voterIdCandidate.length > 5 || columns[2].includes('মাইগ্রেট')) {
+               results.push({
+                slNo: bnToEn(columns[0]),
+                voterNumber: voterIdCandidate,
+                name: cleanSmallString(columns[2]),
+                fatherName: cleanSmallString(columns[3] || ''),
+                motherName: cleanSmallString(columns[4] || ''),
+                birthDate: bnToEn(columns[5] || ''),
+                occupation: 'ভোটার'
+              });
+            }
           }
         });
 
-        // If Strategy A found nothing, try Strategy B (Global block match)
+        // If line-based strategy failed (maybe labels), try block strategy
         if (results.length === 0) {
-          const normalizedForMatching = bulkText
-            .replace(/ঃ/g, ':')
-            .replace(/।/g, ' ')
-            .replace(/Ïনাম/g, 'নাম')
-            .replace(/Ïভাটার\s*নং/g, 'ভোটার নং')
-            .replace(/িপতা/g, 'পিতা')
-            .replace(/ামাতা/g, 'মাতা')
-            .replace(/Ïপশা/g, 'পেশা')
-            .replace(/জ[ĥন্ম]\s*তািরখ/g, 'জন্ম তারিখ');
-            
+          const blockPattern = /([০-৯0-9]+)?[\.\s]*নাম\s*[:\s]*(.*?)\s*ভোটার নং\s*[:\s]*([০-৯0-9]+)\s*পিতা\s*[:\s]*(.*?)\s*মাতা\s*[:\s]*(.*?)\s*পেশা\s*[:\s]*(.*?)\s*[,।]?\s*জন্ম তারিখ\s*[:\s]*([০-৯0-9\/\-]+)/gs;
+          const normalized = bulkText.replace(/ঃ/g, ':').replace(/।/g, ' ').replace(/Ï/g, '');
           let match;
-          while ((match = blockPattern.exec(normalizedForMatching)) !== null) {
+          while ((match = blockPattern.exec(normalized)) !== null) {
             results.push({
               slNo: match[1] ? bnToEn(match[1].trim()) : (results.length + 1).toString(),
               name: cleanSmallString(match[2].trim()), 
@@ -157,9 +162,8 @@ export const AdminPanel: React.FC = () => {
 
         setDetectedVoters(results);
         setIsDetecting(false);
-        setProcessStatus(results.length > 0 ? `মোট ${results.length} জন ভোটার সফলভাবে সনাক্ত করা হয়েছে।` : 'কোনো ভোটার তথ্য পাওয়া যায়নি। অনুগ্রহ করে টেক্সট চেক করুন।');
+        setProcessStatus(results.length > 0 ? `মোট ${results.length} জন ভোটার সফলভাবে সনাক্ত করা হয়েছে।` : 'কোনো ভোটার তথ্য পাওয়া যায়নি। কলামগুলো চেক করুন।');
       } catch (err) {
-        console.error(err);
         setProcessStatus('প্রসেসিং এর সময় সমস্যা হয়েছে।');
         setIsDetecting(false);
       }
@@ -174,26 +178,17 @@ export const AdminPanel: React.FC = () => {
     try {
       const batchSize = 400;
       let totalSaved = 0;
-
       for (let i = 0; i < detectedVoters.length; i += batchSize) {
         const chunk = detectedVoters.slice(i, i + batchSize);
         const batch = writeBatch(db);
-        
         chunk.forEach(voter => {
           const newDocRef = doc(collection(db, 'voters'));
-          batch.set(newDocRef, {
-            ...voter,
-            photoUrl: 'https://cdn-icons-png.flaticon.com/512/149/149071.png',
-            createdAt: Date.now(),
-            status: 'active'
-          });
+          batch.set(newDocRef, { ...voter, photoUrl: 'https://cdn-icons-png.flaticon.com/512/149/149071.png', createdAt: Date.now(), status: 'active' });
           totalSaved++;
         });
-        
         await batch.commit();
         setProcessStatus(`${totalSaved} জন সেভ করা হয়েছে...`);
       }
-
       alert(`${totalSaved} জন ভোটার সফলভাবে যুক্ত হয়েছে।`);
       setShowBulkImport(false);
       setBulkText('');
@@ -215,7 +210,10 @@ export const AdminPanel: React.FC = () => {
           </h2>
           <div className="flex space-x-2">
              <button onClick={() => setShowBulkImport(true)} className="bg-indigo-600 text-white px-4 py-2.5 rounded-2xl font-bold flex items-center space-x-2 shadow-lg hover:bg-indigo-700 active:scale-95 transition-all">
-                <Database size={18} /><span>ডেটা ইম্পোর্ট</span>
+                <Database size={18} /><span>ইম্পোর্ট</span>
+              </button>
+              <button onClick={() => setShowAddMember(true)} className="bg-green-600 text-white px-5 py-2.5 rounded-2xl font-bold flex items-center space-x-2 shadow-lg hover:bg-green-700 active:scale-95 transition-all">
+                <UserPlus size={20} /><span>সদস্য যোগ</span>
               </button>
           </div>
         </div>
@@ -235,10 +233,9 @@ export const AdminPanel: React.FC = () => {
               <div className="p-4 bg-amber-50 border border-amber-100 rounded-2xl flex items-start space-x-3">
                 <AlertCircle className="text-amber-600 shrink-0" size={18} />
                 <p className="text-[11px] text-amber-800 font-bold leading-relaxed">
-                  পরামর্শ: আপনি দুই ধরণের ডেটা দিতে পারেন - তালিকার পুরো রো (যেমন: ০১৮ ৮৮০... নাম...) অথবা বিস্তারিত তথ্য ব্লক (নাম: ...)। অ্যাপটি অটো ডিটেক্ট করবে।
+                  পরামর্শ: পুরো তালিকার রো কপি করে এখানে পেস্ট করুন। ট্যাব বা ডাবল স্পেস দিয়ে কলাম চেনা হবে।
                 </p>
               </div>
-
               <div className="relative">
                 <textarea 
                   className="w-full bg-gray-50 border border-gray-100 rounded-2xl p-4 text-sm h-40 outline-none focus:ring-2 focus:ring-indigo-500 font-mono"
@@ -254,60 +251,73 @@ export const AdminPanel: React.FC = () => {
                   </div>
                 )}
               </div>
-              
               <div className="flex space-x-2">
-                <button 
-                  onClick={handleDetectVoters} 
-                  disabled={isDetecting || isImporting || !bulkText.trim()}
-                  className="flex-1 bg-indigo-600 text-white py-4 rounded-xl font-bold hover:bg-indigo-700 disabled:bg-gray-200 transition-all flex items-center justify-center space-x-2"
-                >
+                <button onClick={handleDetectVoters} disabled={isDetecting || isImporting || !bulkText.trim()} className="flex-1 bg-indigo-600 text-white py-4 rounded-xl font-bold hover:bg-indigo-700 disabled:bg-gray-200 transition-all flex items-center justify-center space-x-2">
                   {isDetecting ? <RefreshCw className="animate-spin" size={18} /> : null}
                   <span>তথ্য ডিটেক্ট করুন</span>
                 </button>
                 <button onClick={() => {setBulkText(''); setDetectedVoters([]); setProcessStatus('');}} className="bg-gray-100 text-gray-500 px-6 py-4 rounded-xl font-bold">Clear</button>
               </div>
-
               {processStatus && !isDetecting && (
                 <div className={`p-3 border rounded-xl flex items-center space-x-2 text-xs font-bold ${detectedVoters.length > 0 ? 'bg-green-50 border-green-100 text-green-700' : 'bg-red-50 border-red-100 text-red-700'}`}>
                   {detectedVoters.length > 0 ? <CheckCircle2 size={16} /> : <AlertCircle size={16} />}
                   <span>{processStatus}</span>
                 </div>
               )}
-              
               {detectedVoters.length > 0 && (
                 <div className="space-y-4">
                   <div className="max-h-60 overflow-y-auto border border-gray-100 rounded-xl bg-gray-50/50 shadow-inner">
                     <table className="w-full text-xs text-left">
                       <thead className="bg-white border-b sticky top-0 z-10">
                         <tr>
-                          <th className="p-3 text-gray-400 font-bold uppercase tracking-wider">SL</th>
-                          <th className="p-3 text-gray-400 font-bold uppercase tracking-wider">ভোটারের নাম</th>
-                          <th className="p-3 text-gray-400 font-bold uppercase tracking-wider">ভোটার আইডি</th>
+                          <th className="p-3 text-gray-400 font-bold">SL</th>
+                          <th className="p-3 text-gray-400 font-bold">নাম</th>
+                          <th className="p-3 text-gray-400 font-bold">পিতার নাম</th>
+                          <th className="p-3 text-gray-400 font-bold">আইডি</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-100">
-                        {detectedVoters.slice(0, 200).map((v, i) => (
+                        {detectedVoters.slice(0, 100).map((v, i) => (
                           <tr key={i} className="hover:bg-white transition-colors">
-                            <td className="p-3 font-mono text-gray-400">{v.slNo}</td>
-                            <td className="p-3 font-bold text-gray-800 break-words">{v.name}</td>
+                            <td className="p-3 text-gray-400">{v.slNo}</td>
+                            <td className="p-3 font-bold text-gray-800">{v.name}</td>
+                            <td className="p-3 text-gray-500">{v.fatherName}</td>
                             <td className="p-3 font-mono text-indigo-600 font-bold">{v.voterNumber}</td>
                           </tr>
                         ))}
                       </tbody>
                     </table>
                   </div>
-                  
-                  <button 
-                    onClick={handleBulkSave}
-                    disabled={isImporting}
-                    className="w-full bg-green-600 text-white py-4 rounded-2xl font-black text-lg shadow-xl hover:bg-green-700 disabled:bg-gray-300 transition-all flex items-center justify-center space-x-2"
-                  >
+                  <button onClick={handleBulkSave} disabled={isImporting} className="w-full bg-green-600 text-white py-4 rounded-2xl font-black text-lg shadow-xl hover:bg-green-700 transition-all flex items-center justify-center space-x-2">
                     {isImporting ? <RefreshCw className="animate-spin" size={20} /> : <Database size={20} />}
                     <span>তালিকায় সেভ করুন ({detectedVoters.length})</span>
                   </button>
                 </div>
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {showAddMember && (
+        <div className="fixed inset-0 z-[110] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-md rounded-[32px] overflow-hidden shadow-2xl animate-in zoom-in-95">
+             <div className="bg-green-600 p-6 text-white flex items-center justify-between">
+                <h3 className="font-bold text-lg">নতুন সদস্য যোগ করুন</h3>
+                <button onClick={() => setShowAddMember(false)} className="p-1 hover:bg-white/10 rounded-lg"><X size={24}/></button>
+             </div>
+             <form onSubmit={handleManualAdd} className="p-6 space-y-4">
+                <InputGroup icon={<UserIcon size={18}/>} label="সদস্যের নাম" value={newMember.name} onChange={v => setNewMember({...newMember, name: v})} placeholder="নাম লিখুন" />
+                <InputGroup icon={<Phone size={18}/>} label="মোবাইল নাম্বার" value={newMember.phone} onChange={v => setNewMember({...newMember, phone: v})} placeholder="017xxxxxxxx" />
+                <InputGroup icon={<Lock size={18}/>} label="পাসওয়ার্ড" value={newMember.password} onChange={v => setNewMember({...newMember, password: v})} placeholder="পাসওয়ার্ড দিন" />
+                <InputGroup icon={<UserIcon size={18}/>} label="পিতার নাম" value={newMember.fatherName} onChange={v => setNewMember({...newMember, fatherName: v})} placeholder="পিতার নাম লিখুন" />
+                <InputGroup icon={<Briefcase size={18}/>} label="পেশা" value={newMember.occupation} onChange={v => setNewMember({...newMember, occupation: v})} placeholder="পেশা লিখুন" />
+                
+                <button type="submit" disabled={isSavingMember} className="w-full bg-green-600 text-white py-4 rounded-2xl font-black shadow-lg hover:bg-green-700 transition-all flex items-center justify-center space-x-2">
+                  {isSavingMember ? <RefreshCw className="animate-spin" size={20}/> : <Save size={20}/>}
+                  <span>সদস্য সেভ করুন</span>
+                </button>
+             </form>
           </div>
         </div>
       )}
@@ -344,3 +354,18 @@ export const AdminPanel: React.FC = () => {
     </div>
   );
 };
+
+const InputGroup = ({ icon, label, value, onChange, placeholder }: any) => (
+  <div className="space-y-1">
+    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">{label}</label>
+    <div className="relative">
+      <div className="absolute left-4 top-3.5 text-gray-300">{icon}</div>
+      <input 
+        className="w-full pl-11 pr-4 py-3 bg-gray-50 border border-gray-100 rounded-xl text-sm focus:ring-2 focus:ring-green-500 outline-none" 
+        value={value} 
+        placeholder={placeholder}
+        onChange={e => onChange(e.target.value)} 
+      />
+    </div>
+  </div>
+);
