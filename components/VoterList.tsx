@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { collection, onSnapshot, query, where, doc, updateDoc, deleteDoc, orderBy, limit } from '@firebase/firestore';
+import { collection, onSnapshot, query, where, doc, updateDoc, deleteDoc, limit } from '@firebase/firestore';
 import { db } from '../firebase';
 import { UserProfile } from '../types';
 import { 
@@ -24,6 +24,7 @@ interface VoterListProps {
 export const VoterList: React.FC<VoterListProps> = ({ currentUser }) => {
   const [voters, setVoters] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [genderFilter, setGenderFilter] = useState<'All' | 'Male' | 'Female'>('All');
   const [loading, setLoading] = useState(true);
   const [visibleCount, setVisibleCount] = useState(50);
   
@@ -37,12 +38,22 @@ export const VoterList: React.FC<VoterListProps> = ({ currentUser }) => {
     const q = query(
       collection(db, 'voters'), 
       where('status', '==', 'active'),
-      orderBy('createdAt', 'desc'),
       limit(1000) 
     );
     
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      setVoters(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id })));
+      const data = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+      
+      data.sort((a: any, b: any) => {
+        const slA = parseInt(a.slNo) || 99999;
+        const slB = parseInt(b.slNo) || 99999;
+        return slA - slB;
+      });
+      
+      setVoters(data);
+      setLoading(false);
+    }, (error) => {
+      console.error("Firestore error:", error);
       setLoading(false);
     });
     return unsubscribe;
@@ -68,10 +79,15 @@ export const VoterList: React.FC<VoterListProps> = ({ currentUser }) => {
     }
   };
 
-  const filteredVoters = voters.filter(v => 
-    v.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    (v.voterNumber && v.voterNumber.includes(searchTerm))
-  );
+  const filteredVoters = voters.filter(v => {
+    const matchesSearch = v.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+      (v.voterNumber && v.voterNumber.includes(searchTerm)) ||
+      (v.slNo && v.slNo.toString().includes(searchTerm));
+    
+    const matchesGender = genderFilter === 'All' || v.gender === genderFilter;
+    
+    return matchesSearch && matchesGender;
+  });
 
   const displayedVoters = filteredVoters.slice(0, visibleCount);
 
@@ -93,19 +109,42 @@ export const VoterList: React.FC<VoterListProps> = ({ currentUser }) => {
         <CreditCard size={60} className="opacity-10" />
       </div>
 
-      <div className="relative px-2">
-        <Search className="absolute left-6 top-3.5 text-gray-400" size={20} />
-        <input
-          type="text"
-          placeholder="নাম বা ভোটার আইডি দিয়ে খুঁজুন..."
-          className="w-full pl-12 pr-4 py-3.5 bg-white border border-gray-100 rounded-2xl shadow-sm outline-none focus:ring-2 focus:ring-indigo-500"
-          value={searchTerm}
-          onChange={(e) => { setSearchTerm(e.target.value); setVisibleCount(50); }}
-        />
+      <div className="space-y-4 px-2">
+        <div className="relative">
+          <Search className="absolute left-4 top-3.5 text-gray-400" size={20} />
+          <input
+            type="text"
+            placeholder="নাম, আইডি বা সিরিয়াল (SL) দিয়ে খুঁজুন..."
+            className="w-full pl-12 pr-4 py-3.5 bg-white border border-gray-100 rounded-2xl shadow-sm outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+            value={searchTerm}
+            onChange={(e) => { setSearchTerm(e.target.value); setVisibleCount(50); }}
+          />
+        </div>
+        
+        <div className="flex items-center space-x-2 overflow-x-auto no-scrollbar pb-1">
+          <button 
+            onClick={() => setGenderFilter('All')}
+            className={`flex-shrink-0 px-5 py-2.5 rounded-xl text-xs font-bold border transition-all ${genderFilter === 'All' ? 'bg-indigo-600 text-white border-indigo-600 shadow-md' : 'bg-white text-gray-500 border-gray-100 hover:border-indigo-100'}`}
+          >
+            সবাই ({voters.length})
+          </button>
+          <button 
+            onClick={() => setGenderFilter('Male')}
+            className={`flex-shrink-0 px-5 py-2.5 rounded-xl text-xs font-bold border transition-all ${genderFilter === 'Male' ? 'bg-blue-600 text-white border-blue-600 shadow-md' : 'bg-white text-gray-500 border-gray-100 hover:border-blue-100'}`}
+          >
+            পুরুষ ({voters.filter(v => v.gender === 'Male').length})
+          </button>
+          <button 
+            onClick={() => setGenderFilter('Female')}
+            className={`flex-shrink-0 px-5 py-2.5 rounded-xl text-xs font-bold border transition-all ${genderFilter === 'Female' ? 'bg-pink-600 text-white border-pink-600 shadow-md' : 'bg-white text-gray-500 border-gray-100 hover:border-pink-100'}`}
+          >
+            মহিলা ({voters.filter(v => v.gender === 'Female').length})
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 px-2">
-        {displayedVoters.map(voter => (
+        {displayedVoters.map((voter) => (
           <div key={voter.id} className="bg-white rounded-3xl p-5 shadow-sm border border-gray-50 hover:shadow-md transition-all group relative">
             {isAdmin && (
               <div className="absolute top-4 right-4 flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
@@ -123,7 +162,12 @@ export const VoterList: React.FC<VoterListProps> = ({ currentUser }) => {
                 <div className="mt-2 space-y-1 text-[11px] text-gray-500 font-bold">
                   <p className="truncate flex items-center"><UserIcon size={12} className="mr-1.5 text-indigo-400" /> পিতা: {voter.fatherName}</p>
                   <p className="truncate flex items-center"><UserIcon size={12} className="mr-1.5 text-pink-400" /> মাতা: {voter.motherName || 'তথ্য নেই'}</p>
-                  <p className="flex items-center"><Calendar size={12} className="mr-1.5 text-amber-500" /> জন্ম: {voter.birthDate}</p>
+                  <div className="flex items-center space-x-3">
+                    <p className="flex items-center"><Calendar size={12} className="mr-1.5 text-amber-500" /> {voter.birthDate}</p>
+                    <p className={`flex items-center px-1.5 py-0.5 rounded-md text-[9px] uppercase font-black tracking-widest ${voter.gender === 'Female' ? 'bg-pink-100 text-pink-700 border border-pink-200' : 'bg-blue-100 text-blue-700 border border-blue-200'}`}>
+                      {voter.gender === 'Female' ? 'মহিলা' : voter.gender === 'Male' ? 'পুরুষ' : 'অন্যান্য'}
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -162,6 +206,17 @@ export const VoterList: React.FC<VoterListProps> = ({ currentUser }) => {
                 <div className="col-span-2">
                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">ভোটারের নাম</label>
                    <input className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" value={editData.name} onChange={e => setEditData({...editData, name: e.target.value})} />
+                </div>
+                <div>
+                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">লিঙ্গ (Gender)</label>
+                   <select className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none appearance-none" value={editData.gender || 'Male'} onChange={e => setEditData({...editData, gender: e.target.value})}>
+                      <option value="Male">পুরুষ (Male)</option>
+                      <option value="Female">মহিলা (Female)</option>
+                   </select>
+                </div>
+                <div>
+                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">SL (সিরিয়াল নম্বর)</label>
+                   <input className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" value={editData.slNo || ''} onChange={e => setEditData({...editData, slNo: e.target.value})} />
                 </div>
                 <div>
                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">পিতার নাম</label>

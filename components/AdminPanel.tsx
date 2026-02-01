@@ -1,17 +1,14 @@
 
 import React, { useState, useEffect } from 'react';
-import { collection, onSnapshot, query, updateDoc, doc, deleteDoc, orderBy, addDoc, getDocs, where, limit, writeBatch } from '@firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { db, storage } from '../firebase';
-import { UserProfile, Post } from '../types';
+import { collection, onSnapshot, query, updateDoc, doc, deleteDoc, orderBy, addDoc, limit, writeBatch } from '@firebase/firestore';
+import { db } from '../firebase';
+import { UserProfile } from '../types';
 import { 
   ShieldCheck, 
   Trash2,
   X,
   RefreshCw,
   UserPlus,
-  Camera,
-  AlertTriangle,
   Users,
   Database,
   Loader2,
@@ -68,8 +65,8 @@ export const AdminPanel: React.FC = () => {
   const [processStatus, setProcessStatus] = useState('');
 
   // Manual Member Add State
-  const [newMember, setNewMember] = useState({
-    name: '', phone: '', password: '', fatherName: '', occupation: ''
+  const [newMember, setNewMember] = useState<Partial<UserProfile>>({
+    name: '', phone: '', password: '', fatherName: '', occupation: '', gender: 'Male'
   });
   const [isSavingMember, setIsSavingMember] = useState(false);
 
@@ -97,12 +94,18 @@ export const AdminPanel: React.FC = () => {
       });
       alert('সদস্য সফলভাবে যুক্ত হয়েছে!');
       setShowAddMember(false);
-      setNewMember({ name: '', phone: '', password: '', fatherName: '', occupation: '' });
+      setNewMember({ name: '', phone: '', password: '', fatherName: '', occupation: '', gender: 'Male' });
     } catch (err) {
       alert('সেভ করতে সমস্যা হয়েছে।');
     } finally {
       setIsSavingMember(false);
     }
+  };
+
+  const updateDetectedVoterGender = (index: number, gender: 'Male' | 'Female') => {
+    const updated = [...detectedVoters];
+    updated[index].gender = gender;
+    setDetectedVoters(updated);
   };
 
   const handleDetectVoters = async () => {
@@ -121,41 +124,41 @@ export const AdminPanel: React.FC = () => {
           const cleanLine = line.trim();
           if (!cleanLine || cleanLine.includes('ক্রমিক নং')) return;
           
-          // Improved Strategy A: Try to split by Tab or multiple spaces (>=2 spaces)
           const columns = cleanLine.split(/\t|\s{2,}/).map(c => c.trim()).filter(c => c !== "");
           
           if (columns.length >= 5) {
-            // Columns expected: [SL] [VoterID] [Name] [Father] [Mother] [BirthDate]
-            // We use columns[1] as Voter ID, columns[2] as Name, etc.
             const voterIdCandidate = bnToEn(columns[1]);
             if (voterIdCandidate === '—' || voterIdCandidate.length > 5 || columns[2].includes('মাইগ্রেট')) {
+               const name = cleanSmallString(columns[2]);
                results.push({
                 slNo: bnToEn(columns[0]),
                 voterNumber: voterIdCandidate,
-                name: cleanSmallString(columns[2]),
+                name: name,
                 fatherName: cleanSmallString(columns[3] || ''),
                 motherName: cleanSmallString(columns[4] || ''),
                 birthDate: bnToEn(columns[5] || ''),
-                occupation: 'ভোটার'
+                occupation: 'ভোটার',
+                gender: name.includes('মোছাঃ') || name.includes('বেগম') || name.includes('খাতুন') ? 'Female' : 'Male'
               });
             }
           }
         });
 
-        // If line-based strategy failed (maybe labels), try block strategy
         if (results.length === 0) {
           const blockPattern = /([০-৯0-9]+)?[\.\s]*নাম\s*[:\s]*(.*?)\s*ভোটার নং\s*[:\s]*([০-৯0-9]+)\s*পিতা\s*[:\s]*(.*?)\s*মাতা\s*[:\s]*(.*?)\s*পেশা\s*[:\s]*(.*?)\s*[,।]?\s*জন্ম তারিখ\s*[:\s]*([০-৯0-9\/\-]+)/gs;
           const normalized = bulkText.replace(/ঃ/g, ':').replace(/।/g, ' ').replace(/Ï/g, '');
           let match;
           while ((match = blockPattern.exec(normalized)) !== null) {
+            const name = cleanSmallString(match[2].trim());
             results.push({
               slNo: match[1] ? bnToEn(match[1].trim()) : (results.length + 1).toString(),
-              name: cleanSmallString(match[2].trim()), 
+              name: name, 
               voterNumber: bnToEn(match[3].trim()),
               fatherName: cleanSmallString(match[4].trim()),
               motherName: cleanSmallString(match[5].trim()),
               occupation: cleanSmallString(match[6].trim()),
-              birthDate: bnToEn(match[7].trim())
+              birthDate: bnToEn(match[7].trim()),
+              gender: name.includes('মোছাঃ') || name.includes('বেগম') || name.includes('খাতুন') ? 'Female' : 'Male'
             });
           }
         }
@@ -224,8 +227,8 @@ export const AdminPanel: React.FC = () => {
           <div className="bg-white w-full max-w-5xl rounded-[32px] overflow-hidden shadow-2xl animate-in zoom-in-95">
             <div className="bg-indigo-600 p-6 text-white flex items-center justify-between">
               <div>
-                <h3 className="font-bold text-lg">অফিসিয়াল ভোটার ইম্পোর্ট (Pro)</h3>
-                <p className="text-[10px] text-indigo-100 font-bold uppercase tracking-widest mt-0.5">Advanced Data Detection</p>
+                <h3 className="font-bold text-lg">অফিসিয়াল ভোটার ইম্পোর্ট</h3>
+                <p className="text-[10px] text-indigo-100 font-bold uppercase tracking-widest mt-0.5">ম্যানুয়ালি লিঙ্গ যাচাই করুন</p>
               </div>
               <button onClick={() => {if(!isDetecting && !isImporting) {setShowBulkImport(false); setDetectedVoters([]);}}} className="p-1 hover:bg-white/10 rounded-lg"><X size={24}/></button>
             </div>
@@ -233,7 +236,7 @@ export const AdminPanel: React.FC = () => {
               <div className="p-4 bg-amber-50 border border-amber-100 rounded-2xl flex items-start space-x-3">
                 <AlertCircle className="text-amber-600 shrink-0" size={18} />
                 <p className="text-[11px] text-amber-800 font-bold leading-relaxed">
-                  পরামর্শ: পুরো তালিকার রো কপি করে এখানে পেস্ট করুন। ট্যাব বা ডাবল স্পেস দিয়ে কলাম চেনা হবে।
+                  নিচে ড্রপডাউন থেকে লিঙ্গ (Male/Female) পরিবর্তন করতে পারবেন। সেভ করার আগে নিশ্চিত হয়ে নিন।
                 </p>
               </div>
               <div className="relative">
@@ -246,7 +249,7 @@ export const AdminPanel: React.FC = () => {
                 />
                 {isDetecting && (
                   <div className="absolute inset-0 bg-white/80 backdrop-blur-[1px] rounded-2xl flex flex-col items-center justify-center space-y-3 z-20">
-                    <Loader2 className="animate-spin text-indigo-600" size={40} />
+                    <RefreshCw className="animate-spin text-indigo-600" size={40} />
                     <p className="text-sm font-black text-indigo-700 uppercase tracking-widest">ডিটেক্ট করা হচ্ছে...</p>
                   </div>
                 )}
@@ -256,32 +259,35 @@ export const AdminPanel: React.FC = () => {
                   {isDetecting ? <RefreshCw className="animate-spin" size={18} /> : null}
                   <span>তথ্য ডিটেক্ট করুন</span>
                 </button>
-                <button onClick={() => {setBulkText(''); setDetectedVoters([]); setProcessStatus('');}} className="bg-gray-100 text-gray-500 px-6 py-4 rounded-xl font-bold">Clear</button>
               </div>
-              {processStatus && !isDetecting && (
-                <div className={`p-3 border rounded-xl flex items-center space-x-2 text-xs font-bold ${detectedVoters.length > 0 ? 'bg-green-50 border-green-100 text-green-700' : 'bg-red-50 border-red-100 text-red-700'}`}>
-                  {detectedVoters.length > 0 ? <CheckCircle2 size={16} /> : <AlertCircle size={16} />}
-                  <span>{processStatus}</span>
-                </div>
-              )}
+              
               {detectedVoters.length > 0 && (
                 <div className="space-y-4">
-                  <div className="max-h-60 overflow-y-auto border border-gray-100 rounded-xl bg-gray-50/50 shadow-inner">
+                  <div className="max-h-64 overflow-y-auto border border-gray-100 rounded-xl bg-gray-50/50 shadow-inner">
                     <table className="w-full text-xs text-left">
                       <thead className="bg-white border-b sticky top-0 z-10">
                         <tr>
                           <th className="p-3 text-gray-400 font-bold">SL</th>
                           <th className="p-3 text-gray-400 font-bold">নাম</th>
-                          <th className="p-3 text-gray-400 font-bold">পিতার নাম</th>
+                          <th className="p-3 text-gray-400 font-bold">লিঙ্গ (Male/Female)</th>
                           <th className="p-3 text-gray-400 font-bold">আইডি</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-100">
-                        {detectedVoters.slice(0, 100).map((v, i) => (
+                        {detectedVoters.map((v, i) => (
                           <tr key={i} className="hover:bg-white transition-colors">
                             <td className="p-3 text-gray-400">{v.slNo}</td>
                             <td className="p-3 font-bold text-gray-800">{v.name}</td>
-                            <td className="p-3 text-gray-500">{v.fatherName}</td>
+                            <td className="p-3">
+                               <select 
+                                 className={`px-3 py-1.5 rounded-lg border text-[10px] font-bold outline-none transition-colors ${v.gender === 'Female' ? 'bg-pink-50 text-pink-700 border-pink-200 focus:ring-pink-200' : 'bg-blue-50 text-blue-700 border-blue-200 focus:ring-blue-200'}`}
+                                 value={v.gender}
+                                 onChange={(e) => updateDetectedVoterGender(i, e.target.value as any)}
+                               >
+                                  <option value="Male">পুরুষ (Male)</option>
+                                  <option value="Female">মহিলা (Female)</option>
+                               </select>
+                            </td>
                             <td className="p-3 font-mono text-indigo-600 font-bold">{v.voterNumber}</td>
                           </tr>
                         ))}
@@ -308,6 +314,22 @@ export const AdminPanel: React.FC = () => {
              </div>
              <form onSubmit={handleManualAdd} className="p-6 space-y-4">
                 <InputGroup icon={<UserIcon size={18}/>} label="সদস্যের নাম" value={newMember.name} onChange={v => setNewMember({...newMember, name: v})} placeholder="নাম লিখুন" />
+                
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">লিঙ্গ (Gender)</label>
+                  <div className="relative">
+                    <Users className="absolute left-4 top-3.5 text-gray-300" size={18} />
+                    <select 
+                      className="w-full pl-11 pr-4 py-3 bg-gray-50 border border-gray-100 rounded-xl text-sm focus:ring-2 focus:ring-green-500 outline-none appearance-none" 
+                      value={newMember.gender} 
+                      onChange={e => setNewMember({...newMember, gender: e.target.value as any})}
+                    >
+                      <option value="Male">পুরুষ (Male)</option>
+                      <option value="Female">মহিলা (Female)</option>
+                    </select>
+                  </div>
+                </div>
+
                 <InputGroup icon={<Phone size={18}/>} label="মোবাইল নাম্বার" value={newMember.phone} onChange={v => setNewMember({...newMember, phone: v})} placeholder="017xxxxxxxx" />
                 <InputGroup icon={<Lock size={18}/>} label="পাসওয়ার্ড" value={newMember.password} onChange={v => setNewMember({...newMember, password: v})} placeholder="পাসওয়ার্ড দিন" />
                 <InputGroup icon={<UserIcon size={18}/>} label="পিতার নাম" value={newMember.fatherName} onChange={v => setNewMember({...newMember, fatherName: v})} placeholder="পিতার নাম লিখুন" />

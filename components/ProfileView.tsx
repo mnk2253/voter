@@ -15,6 +15,7 @@ export const ProfileView: React.FC<{ user: UserProfile, onUpdate: (u: UserProfil
   const [fatherName, setFatherName] = useState(user.fatherName);
   const [motherName, setMotherName] = useState(user.motherName || '');
   const [birthDate, setBirthDate] = useState(user.birthDate || '');
+  const [gender, setGender] = useState(user.gender || 'Male');
   const [occupation, setOccupation] = useState(user.occupation);
   const [photo, setPhoto] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState(user.photoUrl);
@@ -44,11 +45,12 @@ export const ProfileView: React.FC<{ user: UserProfile, onUpdate: (u: UserProfil
         fatherName,
         motherName,
         birthDate,
+        gender,
         occupation,
         photoUrl
       });
 
-      onUpdate({ ...user, name, fatherName, motherName, birthDate, occupation, photoUrl });
+      onUpdate({ ...user, name, fatherName, motherName, birthDate, gender, occupation, photoUrl });
       setIsEditing(false);
     } catch (err) {
       alert('তথ্য আপডেট করতে সমস্যা হয়েছে।');
@@ -147,6 +149,21 @@ export const ProfileView: React.FC<{ user: UserProfile, onUpdate: (u: UserProfil
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">লিঙ্গ (Gender)</label>
+                  {isEditing ? (
+                    <select className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-green-500 appearance-none" value={gender} onChange={(e) => setGender(e.target.value as any)}>
+                      <option value="Male">পুরুষ (Male)</option>
+                      <option value="Female">মহিলা (Female)</option>
+                      <option value="Other">অন্যান্য</option>
+                    </select>
+                  ) : (
+                    <p className="text-gray-700 font-medium flex items-center">
+                      <Users size={14} className="mr-2 text-indigo-500" /> {user.gender === 'Female' ? 'মহিলা' : user.gender === 'Male' ? 'পুরুষ' : 'অন্যান্য'}
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-1">
                   <label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">জন্ম তারিখ</label>
                   {isEditing ? (
                     <input type="text" className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-green-500" value={birthDate} onChange={(e) => setBirthDate(e.target.value)} placeholder="DD/MM/YYYY" />
@@ -156,7 +173,9 @@ export const ProfileView: React.FC<{ user: UserProfile, onUpdate: (u: UserProfil
                     </p>
                   )}
                 </div>
+              </div>
 
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">পেশা</label>
                   {isEditing ? (
@@ -167,6 +186,13 @@ export const ProfileView: React.FC<{ user: UserProfile, onUpdate: (u: UserProfil
                     </p>
                   )}
                 </div>
+                
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">মোবাইল নাম্বার</label>
+                  <p className="text-gray-700 font-medium flex items-center">
+                    <Phone size={14} className="mr-2 text-green-600" /> {user.phone}
+                  </p>
+                </div>
               </div>
 
               <div className="space-y-1">
@@ -176,13 +202,6 @@ export const ProfileView: React.FC<{ user: UserProfile, onUpdate: (u: UserProfil
                   <span className={user.voterNumber ? "text-gray-800 font-mono font-bold" : "text-gray-400 italic"}>
                     {user.voterNumber || 'অ্যাডমিন এখনো যুক্ত করেননি'}
                   </span>
-                </p>
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">মোবাইল নাম্বার</label>
-                <p className="text-gray-700 font-medium flex items-center">
-                  <Phone size={14} className="mr-2 text-green-600" /> {user.phone}
                 </p>
               </div>
             </div>

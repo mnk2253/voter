@@ -8,6 +8,7 @@ export interface UserProfile {
   fatherName: string;
   motherName?: string;
   birthDate?: string;
+  gender?: 'Male' | 'Female' | 'Other';
   occupation: string;
   phone: string;
   password?: string;
