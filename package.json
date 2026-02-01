@@ -1,5 +1,5 @@
 {
-  "name": "amder-voter-talika---digital-village-registry",
+  "name": "আমাদের-গ্রাম-শ্রীদাসগাতী",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -9,11 +9,11 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "react": "^19.2.4",
-    "react-dom": "^19.2.4",
-    "@google/genai": "1.3.0",
-    "recharts": "2.15.0",
-    "pdfjs-dist": "4.10.38"
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3",
+    "lucide-react": "0.460.0",
+    "firebase": "^12.8.0",
+    "@google/genai": "^1.38.0"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",

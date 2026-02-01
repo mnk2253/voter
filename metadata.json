@@ -1,5 +1,8 @@
 {
-  "name": "Amder Voter Talika - Digital Village Registry",
-  "description": "A sophisticated voter list management system for local villages with AI-powered insights, demographic analytics, and easy search capabilities.",
-  "requestFramePermissions": []
+  "name": "আমাদের গ্রাম শ্রীদাসগাতী",
+  "description": "একটি আধুনিক গ্রাম ব্যবস্থাপনা এবং সামাজিক যোগাযোগ মাধ্যম অ্যাপ যা শ্রীদাসগাতী গ্রামের সদস্যদের জন্য তৈরি।",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
 }
