@@ -20,6 +20,9 @@ const PDFImportModal: React.FC<PDFImportModalProps> = ({ onImport, onCancel }) =
     setError('');
     try {
       const data = await parseVoterText(text);
+      if (data.length === 0) {
+        throw new Error('কোন সঠিক ভোটার তথ্য পাওয়া যায়নি।');
+      }
       setExtractedData(data);
     } catch (err: any) {
       setError(err.message || 'কিছু সমস্যা হয়েছে। আবার চেষ্টা করুন।');
@@ -37,7 +40,7 @@ const PDFImportModal: React.FC<PDFImportModalProps> = ({ onImport, onCancel }) =
       <div className="flex justify-between items-center mb-6">
         <div>
           <h2 className="text-2xl font-bold text-slate-800">পিডিএফ থেকে কপি-পেস্ট করুন</h2>
-          <p className="text-sm text-slate-500">পিডিএফ থেকে টেক্সট কপি করে নিচে পেস্ট করুন, এআই স্বয়ংক্রিয়ভাবে তথ্য সাজিয়ে নেবে।</p>
+          <p className="text-sm text-slate-500">পিডিএফ থেকে টেক্সট (Sl নং, নাম, আইডি, পিতা, মাতা, জন্ম তারিখ) কপি করে এখানে পেস্ট করুন।</p>
         </div>
         <button onClick={onCancel} className="text-slate-400 hover:text-slate-600">
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -51,43 +54,57 @@ const PDFImportModal: React.FC<PDFImportModalProps> = ({ onImport, onCancel }) =
           <div className="space-y-4">
             <textarea
               className="w-full h-64 p-4 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none font-mono text-sm"
-              placeholder="পিডিএফ থেকে কপি করা টেক্সট এখানে পেস্ট করুন..."
+              placeholder="উদাহরণ: ০০১. মোঃ সামাদ আলী ৮৮০৭৫০০১০০১৪ মোঃ ময়দান আলী মোছাঃ খেতজা খাতুন ০১/০১/১৯৬২"
               value={text}
               onChange={(e) => setText(e.target.value)}
             />
-            {error && <p className="text-red-500 text-sm">{error}</p>}
+            {error && (
+              <div className="p-4 bg-red-50 border border-red-100 rounded-xl flex items-start space-x-3">
+                <svg className="w-5 h-5 text-red-500 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <p className="text-red-600 text-sm">{error}</p>
+              </div>
+            )}
           </div>
         ) : (
-          <div className="border border-emerald-100 rounded-xl overflow-hidden">
-            <div className="bg-emerald-50 px-4 py-2 border-b border-emerald-100 flex justify-between items-center">
-              <span className="text-emerald-800 font-bold">{extractedData.length} জন ভোটার পাওয়া গেছে</span>
+          <div className="border border-emerald-100 rounded-xl overflow-hidden shadow-inner bg-slate-50">
+            <div className="bg-emerald-50 px-4 py-3 border-b border-emerald-100 flex justify-between items-center">
+              <span className="text-emerald-800 font-bold flex items-center">
+                <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                </svg>
+                {extractedData.length} জন ভোটার পাওয়া গেছে
+              </span>
               <button 
                 onClick={() => setExtractedData([])}
-                className="text-xs text-emerald-600 hover:underline"
+                className="text-xs text-emerald-600 hover:text-emerald-800 font-bold underline"
               >
                 আবার পেস্ট করুন
               </button>
             </div>
-            <table className="w-full text-xs">
-              <thead className="bg-slate-50 border-b border-slate-200">
-                <tr>
-                  <th className="px-4 py-2 text-left">নাম</th>
-                  <th className="px-4 py-2 text-left">পিতা/মাতা</th>
-                  <th className="px-4 py-2 text-left">এনআইডি</th>
-                  <th className="px-4 py-2 text-left">ওয়ার্ড</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {extractedData.map((v, i) => (
-                  <tr key={i}>
-                    <td className="px-4 py-2 font-medium">{v.name}</td>
-                    <td className="px-4 py-2">{v.fatherName} / {v.motherName}</td>
-                    <td className="px-4 py-2 font-mono">{v.nid}</td>
-                    <td className="px-4 py-2">{v.ward}</td>
+            <div className="max-h-96 overflow-y-auto">
+              <table className="w-full text-xs">
+                <thead className="bg-slate-100 border-b border-slate-200 sticky top-0">
+                  <tr>
+                    <th className="px-4 py-2 text-left">নাম</th>
+                    <th className="px-4 py-2 text-left">পিতা/মাতা</th>
+                    <th className="px-4 py-2 text-left">এনআইডি</th>
+                    <th className="px-4 py-2 text-left">জন্ম তারিখ</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-slate-200">
+                  {extractedData.map((v, i) => (
+                    <tr key={i} className="hover:bg-emerald-50/50 transition-colors">
+                      <td className="px-4 py-3 font-medium text-slate-900">{v.name}</td>
+                      <td className="px-4 py-3 text-slate-600">{v.fatherName} / {v.motherName}</td>
+                      <td className="px-4 py-3 font-mono text-emerald-700">{v.nid}</td>
+                      <td className="px-4 py-3 text-slate-600">{v.dob}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </div>
@@ -95,7 +112,7 @@ const PDFImportModal: React.FC<PDFImportModalProps> = ({ onImport, onCancel }) =
       <div className="flex justify-end space-x-3 mt-8 pt-6 border-t border-slate-100">
         <button
           onClick={onCancel}
-          className="px-6 py-2 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50"
+          className="px-6 py-2 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 transition-all font-medium"
         >
           বাতিল
         </button>
@@ -103,7 +120,7 @@ const PDFImportModal: React.FC<PDFImportModalProps> = ({ onImport, onCancel }) =
           <button
             onClick={handleProcess}
             disabled={!text.trim() || isProcessing}
-            className="px-8 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 shadow-lg shadow-emerald-200 disabled:opacity-50 flex items-center space-x-2"
+            className="px-8 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 shadow-lg shadow-emerald-200 disabled:opacity-50 flex items-center space-x-2 font-bold transition-all"
           >
             {isProcessing ? (
               <>
@@ -117,7 +134,7 @@ const PDFImportModal: React.FC<PDFImportModalProps> = ({ onImport, onCancel }) =
         ) : (
           <button
             onClick={handleConfirm}
-            className="px-8 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 shadow-lg shadow-emerald-200 font-bold"
+            className="px-8 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 shadow-lg shadow-emerald-200 font-bold transition-all"
           >
             তালিকায় যোগ করুন
           </button>
