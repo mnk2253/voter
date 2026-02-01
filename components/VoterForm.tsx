@@ -16,14 +16,15 @@ const VoterForm: React.FC<VoterFormProps> = ({ onAdd, onCancel }) => {
     gender: 'পুরুষ' as Gender,
     nid: '',
     ward: '১ নম্বর ওয়ার্ড',
-    address: ''
+    address: '',
+    dob: ''
   });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onAdd({
       ...formData,
-      age: parseInt(formData.age)
+      age: formData.age ? parseInt(formData.age) : 0
     });
   };
 
@@ -54,7 +55,7 @@ const VoterForm: React.FC<VoterFormProps> = ({ onAdd, onCancel }) => {
             <input
               required
               maxLength={17}
-              className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none"
+              className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none font-mono"
               value={formData.nid}
               onChange={e => setFormData({...formData, nid: e.target.value})}
             />
@@ -75,6 +76,16 @@ const VoterForm: React.FC<VoterFormProps> = ({ onAdd, onCancel }) => {
               className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none"
               value={formData.motherName}
               onChange={e => setFormData({...formData, motherName: e.target.value})}
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="text-sm font-medium text-slate-700">জন্ম তারিখ</label>
+            <input
+              type="text"
+              placeholder="DD/MM/YYYY"
+              className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none"
+              value={formData.dob}
+              onChange={e => setFormData({...formData, dob: e.target.value})}
             />
           </div>
           <div className="space-y-1">
@@ -111,15 +122,6 @@ const VoterForm: React.FC<VoterFormProps> = ({ onAdd, onCancel }) => {
               <option>২ নম্বর ওয়ার্ড</option>
               <option>৩ নম্বর ওয়ার্ড</option>
             </select>
-          </div>
-          <div className="space-y-1">
-            <label className="text-sm font-medium text-slate-700">গ্রাম/পাড়া</label>
-            <input
-              required
-              className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none"
-              value={formData.address}
-              onChange={e => setFormData({...formData, address: e.target.value})}
-            />
           </div>
         </div>
         <div className="flex justify-end space-x-3 mt-8">

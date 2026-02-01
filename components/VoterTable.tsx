@@ -37,39 +37,41 @@ const VoterTable: React.FC<VoterTableProps> = ({ voters, onDelete }) => {
         <table className="w-full text-left">
           <thead className="bg-slate-50">
             <tr>
-              <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">ভোটারের নাম</th>
-              <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">পিতা/মাতা</th>
-              <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">এনআইডি</th>
-              <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">বয়স ও লিঙ্গ</th>
-              <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">ওয়ার্ড</th>
+              <th className="px-4 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider text-center">Sl নং</th>
+              <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">নাম</th>
+              <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">ভোটার আইডি (ID No)</th>
+              <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">পিতা</th>
+              <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">মাতা</th>
+              <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">জন্ম তারিখ</th>
               <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider text-right">অ্যাকশন</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {filteredVoters.map((voter) => (
+            {filteredVoters.map((voter, index) => (
               <tr key={voter.id} className="hover:bg-slate-50 transition-colors">
+                <td className="px-4 py-4 text-sm text-center text-slate-500 font-mono">
+                  {(index + 1).toString().padStart(3, '০')}
+                </td>
                 <td className="px-6 py-4">
                   <div className="font-medium text-slate-900">{voter.name}</div>
-                  <div className="text-xs text-slate-500">{voter.address}</div>
+                  <div className="text-[10px] text-slate-400 uppercase tracking-tighter">{voter.ward}</div>
                 </td>
-                <td className="px-6 py-4">
-                  <div className="text-sm text-slate-600">পি: {voter.fatherName}</div>
-                  <div className="text-sm text-slate-600">মা: {voter.motherName}</div>
+                <td className="px-6 py-4 text-sm font-mono text-slate-700">
+                  {voter.nid}
                 </td>
-                <td className="px-6 py-4 text-sm font-mono text-slate-700">{voter.nid}</td>
-                <td className="px-6 py-4">
-                  <div className="flex items-center space-x-2">
-                    <span className={`px-2 py-1 rounded-full text-[10px] font-bold ${voter.gender === 'পুরুষ' ? 'bg-blue-100 text-blue-700' : 'bg-pink-100 text-pink-700'}`}>
-                      {voter.gender}
-                    </span>
-                    <span className="text-sm text-slate-600">{voter.age} বছর</span>
-                  </div>
+                <td className="px-6 py-4 text-sm text-slate-600">
+                  {voter.fatherName}
                 </td>
-                <td className="px-6 py-4 text-sm text-slate-600">{voter.ward}</td>
+                <td className="px-6 py-4 text-sm text-slate-600">
+                  {voter.motherName}
+                </td>
+                <td className="px-6 py-4 text-sm text-slate-600">
+                  {voter.dob || `${voter.age} বছর (আন্দাজ)`}
+                </td>
                 <td className="px-6 py-4 text-right">
                   <button 
                     onClick={() => onDelete(voter.id)}
-                    className="text-red-500 hover:text-red-700 p-2 rounded-full hover:bg-red-50 transition-all"
+                    className="text-red-400 hover:text-red-600 p-2 rounded-full hover:bg-red-50 transition-all"
                   >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -80,7 +82,7 @@ const VoterTable: React.FC<VoterTableProps> = ({ voters, onDelete }) => {
             ))}
             {filteredVoters.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-6 py-12 text-center text-slate-500">
+                <td colSpan={7} className="px-6 py-12 text-center text-slate-500">
                   কোন ভোটার খুঁজে পাওয়া যায়নি
                 </td>
               </tr>

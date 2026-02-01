@@ -11,6 +11,7 @@ export interface Voter {
   nid: string;
   ward: string;
   address: string;
+  dob?: string; // Date of Birth
 }
 
 export interface VillageStats {
