@@ -1,8 +1,7 @@
 {
-  "name": "আমাদের গ্রাম শ্রীদাসগাতী",
-  "description": "একটি আধুনিক গ্রাম ব্যবস্থাপনা এবং সামাজিক যোগাযোগ মাধ্যম অ্যাপ যা শ্রীদাসগাতী গ্রামের সদস্যদের জন্য তৈরি।",
+  "name": "GhostCall BD - AI Private Dialer",
+  "description": "A cutting-edge AI-powered calling simulator that features a sleek Bangladesh-centric interface and real-time voice interaction via Gemini Live.",
   "requestFramePermissions": [
-    "camera",
     "microphone"
   ]
 }

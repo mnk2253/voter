@@ -1,51 +1,48 @@
 
 <!DOCTYPE html>
-<html lang="bn">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>আমাদের গ্রাম শ্রীদাসগাতী</title>
+    <title>GhostCall BD</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
         body {
-            font-family: 'Hind Siliguri', sans-serif;
-            background-color: #f8fafc;
+            font-family: 'Inter', sans-serif;
+            background-color: #0f172a;
+            color: #f8fafc;
             margin: 0;
-            padding: 0;
-            -webkit-tap-highlight-color: transparent;
+            overflow: hidden;
         }
-        .no-scrollbar::-webkit-scrollbar {
-            display: none;
+        .glass {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
-        .no-scrollbar {
-            -ms-overflow-style: none;
-            scrollbar-width: none;
+        .keypad-button:active {
+            transform: scale(0.95);
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+        .glow-green {
+            box-shadow: 0 0 20px rgba(34, 197, 94, 0.4);
+        }
+        .animate-pulse-slow {
+            animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: .5; }
         }
     </style>
 <script type="importmap">
 {
   "imports": {
-    "firebase/app": "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js",
-    "firebase/firestore": "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js",
-    "firebase/storage": "https://www.gstatic.com/firebasejs/11.0.2/firebase-storage.js",
-    "firebase/auth": "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js",
-    "react": "https://esm.sh/react@19.0.0",
-    "react-dom": "https://esm.sh/react-dom@19.0.0",
-    "react-dom/client": "https://esm.sh/react-dom@19.0.0/client",
-    "lucide-react": "https://esm.sh/lucide-react@0.460.0",
-    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
-    "react/": "https://esm.sh/react@^19.2.3/",
-    "firebase/": "https://esm.sh/firebase@^12.8.0/",
-    "@google/genai": "https://esm.sh/@google/genai@^1.38.0",
-    "path": "https://esm.sh/path@^0.12.7",
-    "url": "https://esm.sh/url@^0.11.4",
-    "vite": "https://esm.sh/vite@^7.3.1",
-    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.2",
-    "@firebase/firestore": "https://esm.sh/@firebase/firestore@^4.10.0",
-    "@firebase/auth": "https://esm.sh/@firebase/auth@^1.12.0",
-    "@firebase/app": "https://esm.sh/@firebase/app@^0.14.7",
-    "@firebase/storage": "https://esm.sh/@firebase/storage@^0.13.2"
+    "react/": "https://esm.sh/react@^19.2.4/",
+    "react": "https://esm.sh/react@^19.2.4",
+    "@google/genai": "https://esm.sh/@google/genai@^1.40.0",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.4/"
   }
 }
 </script>
@@ -53,6 +50,6 @@
 </head>
 <body>
     <div id="root"></div>
-    <script type="module" src="/index.tsx"></script>
+<script type="module" src="/index.tsx"></script>
 </body>
 </html>
