@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { GoogleGenAI, Modality } from '@google/genai';
+import { GoogleGenAI, Modality, GenerateContentResponse } from '@google/genai';
 import { CallStatus, CallLog, TranscriptionItem } from './types';
 import Dialer from './components/Dialer';
 import ActiveCall from './components/ActiveCall';
@@ -29,6 +29,10 @@ const App: React.FC = () => {
 
   const checkMicAvailability = async () => {
     try {
+      if (!navigator.mediaDevices) {
+        setMicAvailable(false);
+        return;
+      }
       const devices = await navigator.mediaDevices.enumerateDevices();
       const hasMic = devices.some(device => device.kind === 'audioinput');
       setMicAvailable(hasMic);
@@ -52,7 +56,7 @@ const App: React.FC = () => {
     if (!phoneNumber) return;
     setErrorMessage(null);
     
-    // If we know there's no mic, or user explicitly requested simulation
+    // Auto-detect if we should simulate
     const shouldSimulate = forceSimulated || micAvailable === false;
     setIsSimulated(shouldSimulate);
     setCallStatus(CallStatus.DIALING);
@@ -65,48 +69,67 @@ const App: React.FC = () => {
       } else {
         connectToGemini();
       }
-    }, 1500);
+    }, 1200);
   };
 
   const startSimulatedSession = async () => {
-    setCallStatus(CallStatus.CONNECTED);
-    setTranscription([{ role: 'model', text: "[GHOST-GATEWAY] Secure Bangladesh routing established. Virtual session active. How can I assist you today?" }]);
-    
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
-    const chat = ai.chats.create({
-      model: 'gemini-3-flash-preview',
-      config: {
-        systemInstruction: `You are an AI assistant for GhostCall BD, an anonymous calling service. The user is using Simulation Mode because their microphone is unavailable. Respond as a professional, friendly assistant. Use a blend of English and Bengali (Bangla). Keep responses short like a phone conversation.`
+    try {
+      setCallStatus(CallStatus.CONNECTED);
+      const greeting = "[GHOST-NET] Connected to +880 Gateway. Secure Virtual Session Active. Assalamu Alaikum, how can I help you?";
+      setTranscription([{ role: 'model', text: greeting }]);
+      
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
+      const chat = ai.chats.create({
+        model: 'gemini-3-flash-preview',
+        config: {
+          systemInstruction: `You are GhostCall BD AI. The user has NO MICROPHONE. You must communicate via text. Greet the user for number ${phoneNumber}. Mix English and Bangla. Keep it helpful and slightly mysterious.`
+        }
+      });
+      sessionRef.current = chat;
+    } catch (err: any) {
+      setErrorMessage("Failed to start virtual session.");
+      setCallStatus(CallStatus.IDLE);
+    }
+  };
+
+  const handleSendMessage = async (text: string) => {
+    if (!text.trim() || !sessionRef.current) return;
+
+    setTranscription(prev => [...prev, { role: 'user', text }]);
+
+    try {
+      if (isSimulated) {
+        // Chat mode
+        const response: GenerateContentResponse = await sessionRef.current.sendMessage({ message: text });
+        setTranscription(prev => [...prev, { role: 'model', text: response.text || "..." }]);
+      } else {
+        // Live mode (if user types while in live mode)
+        // Not implemented for live stream in this simplified flow, 
+        // but we could send a text part to the live session if it supported it.
+        // For now, simulated mode is the primary text interaction.
       }
-    });
-    sessionRef.current = chat;
+    } catch (err) {
+      console.error("Failed to send message:", err);
+    }
   };
 
   const connectToGemini = async () => {
     try {
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        throw new Error("Your browser does not support audio recording.");
+        throw new Error("No media support.");
       }
 
       let stream: MediaStream;
       try {
         stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       } catch (e: any) {
-        console.error("Mic access error:", e);
-        // If device is not found, automatically switch to simulation instead of showing a hard error
-        if (e.name === 'NotFoundError' || e.name === 'DevicesNotFoundError' || e.message?.toLowerCase().includes('not found')) {
-          setMicAvailable(false);
-          startCall(true);
-          return;
-        } else if (e.name === 'NotAllowedError' || e.name === 'PermissionDeniedError') {
-          throw new Error("Microphone permission denied. Please allow microphone access in settings.");
-        } else {
-          throw new Error("Could not access microphone: " + e.message);
-        }
+        console.warn("Microphone failed, falling back to simulation automatically...");
+        setMicAvailable(false);
+        startCall(true); // Retry as simulation
+        return;
       }
 
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
-      
       const inputCtx = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
       const outputCtx = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
       audioContextRef.current = { input: inputCtx, output: outputCtx };
@@ -120,7 +143,7 @@ const App: React.FC = () => {
           },
           inputAudioTranscription: {},
           outputAudioTranscription: {},
-          systemInstruction: `You are a private AI assistant for an anonymous calling service. The user has dialed ${phoneNumber} via a secure Bangladesh gateway. Greet them in English and Bangla. Keep it conversational.`
+          systemInstruction: `GhostCall BD AI. Calling ${phoneNumber}. Use English/Bangla.`
         },
         callbacks: {
           onopen: () => {
@@ -166,8 +189,7 @@ const App: React.FC = () => {
             }
           },
           onerror: (e) => {
-            console.error("Gemini Error:", e);
-            setErrorMessage("Connection lost. Please try again.");
+            setErrorMessage("Connection lost.");
             endCall();
           },
           onclose: () => endCall()
@@ -176,8 +198,7 @@ const App: React.FC = () => {
 
       sessionRef.current = await sessionPromise;
     } catch (err: any) {
-      console.error("Failed to start call:", err);
-      setErrorMessage(err.message || "An unexpected error occurred.");
+      setErrorMessage("Call failed. Please try again.");
       setCallStatus(CallStatus.IDLE);
     }
   };
@@ -194,8 +215,8 @@ const App: React.FC = () => {
     sourcesRef.current.clear();
     
     if (audioContextRef.current) {
-      audioContextRef.current.input.close();
-      audioContextRef.current.output.close();
+      audioContextRef.current.input.close().catch(() => {});
+      audioContextRef.current.output.close().catch(() => {});
       audioContextRef.current = null;
     }
 
@@ -204,7 +225,7 @@ const App: React.FC = () => {
         id: Math.random().toString(36).substr(2, 9),
         number: phoneNumber,
         timestamp: new Date(),
-        duration: isSimulated ? 'Simulated' : '01:45'
+        duration: isSimulated ? 'Virtual' : '01:22'
       };
       setHistory(prev => [newLog, ...prev]);
     }
@@ -225,55 +246,47 @@ const App: React.FC = () => {
           <h1 className="font-bold text-xl tracking-tight">GhostCall <span className="text-emerald-400">BD</span></h1>
         </div>
         <div className="flex flex-col items-end">
-           <div className="px-2 py-0.5 rounded bg-slate-800 text-[10px] font-mono text-emerald-400 border border-emerald-500/30">
-            {isSimulated ? 'SIMULATION MODE' : 'ROUTING ACTIVE'}
+          <div className={`px-2 py-0.5 rounded text-[10px] font-mono border ${isSimulated ? 'bg-amber-900/20 text-amber-400 border-amber-500/30' : 'bg-emerald-900/20 text-emerald-400 border-emerald-500/30'}`}>
+            {isSimulated ? 'VIRTUAL GHOST' : 'ENCRYPTED LINE'}
           </div>
-          {micAvailable === false && (
-            <span className="text-[8px] text-amber-500 font-bold mt-1">NO MIC DETECTED</span>
-          )}
         </div>
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 relative overflow-y-auto overflow-x-hidden p-4">
+      <div className="flex-1 relative overflow-y-auto overflow-x-hidden">
         {errorMessage && (
-          <div className="mb-4 p-4 bg-red-500/10 border border-red-500/50 rounded-xl text-red-400 text-sm animate-in fade-in slide-in-from-top-4">
-            <div className="flex items-start space-x-3 mb-2">
-              <i className="fas fa-exclamation-triangle mt-1"></i>
-              <p className="flex-1 font-medium">{errorMessage}</p>
-              <button onClick={() => setErrorMessage(null)} className="text-red-400/50 hover:text-red-400">
-                <i className="fas fa-times"></i>
-              </button>
+          <div className="m-4 p-4 bg-red-500/10 border border-red-500/50 rounded-xl text-red-400 text-sm flex justify-between items-center">
+            <div className="flex items-center space-x-2">
+              <i className="fas fa-exclamation-circle"></i>
+              <span>{errorMessage}</span>
             </div>
-            <p className="text-xs text-red-400/70">
-              Check your browser permissions or hardware connections.
-            </p>
+            <button onClick={() => setErrorMessage(null)} className="text-red-400/50">
+              <i className="fas fa-times"></i>
+            </button>
           </div>
         )}
 
-        {callStatus === CallStatus.IDLE && (
-          <>
+        {callStatus === CallStatus.IDLE ? (
+          <div className="p-4 h-full">
             {activeTab === 'dialer' ? (
               <Dialer 
                 number={phoneNumber} 
                 onDial={handleDial} 
                 onBackspace={handleBackspace} 
                 onCall={() => startCall(false)} 
-                isSimulatedMode={micAvailable === false}
               />
             ) : (
               <History history={history} />
             )}
-          </>
-        )}
-
-        {(callStatus === CallStatus.DIALING || callStatus === CallStatus.CONNECTED) && (
+          </div>
+        ) : (
           <ActiveCall 
             status={callStatus} 
             number={phoneNumber} 
             onEnd={endCall} 
             transcription={transcription}
             isSimulated={isSimulated}
+            onSendMessage={handleSendMessage}
           />
         )}
       </div>
@@ -282,22 +295,18 @@ const App: React.FC = () => {
       {callStatus === CallStatus.IDLE && (
         <div className="p-4 flex justify-around border-t border-slate-800 glass z-10">
           <button 
-            onClick={() => { setActiveTab('dialer'); setErrorMessage(null); }}
-            className={`flex flex-col items-center space-y-1 transition-colors ${activeTab === 'dialer' ? 'text-emerald-400' : 'text-slate-400'}`}
+            onClick={() => setActiveTab('dialer')}
+            className={`flex flex-col items-center space-y-1 ${activeTab === 'dialer' ? 'text-emerald-400' : 'text-slate-500'}`}
           >
             <i className="fas fa-th text-xl"></i>
-            <span className="text-xs font-medium">Dialer</span>
+            <span className="text-[10px] font-bold uppercase tracking-widest">Dialer</span>
           </button>
           <button 
-            onClick={() => { setActiveTab('history'); setErrorMessage(null); }}
-            className={`flex flex-col items-center space-y-1 transition-colors ${activeTab === 'history' ? 'text-emerald-400' : 'text-slate-400'}`}
+            onClick={() => setActiveTab('history')}
+            className={`flex flex-col items-center space-y-1 ${activeTab === 'history' ? 'text-emerald-400' : 'text-slate-500'}`}
           >
             <i className="fas fa-history text-xl"></i>
-            <span className="text-xs font-medium">History</span>
-          </button>
-          <button className="flex flex-col items-center space-y-1 text-slate-400 opacity-50 cursor-not-allowed">
-            <i className="fas fa-cog text-xl"></i>
-            <span className="text-xs font-medium">Settings</span>
+            <span className="text-[10px] font-bold uppercase tracking-widest">Recent</span>
           </button>
         </div>
       )}
